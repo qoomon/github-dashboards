@@ -15,6 +15,20 @@
   --color-text: #e6edf3;
 
   --section-gap: 160px;
+
+  /* GitHub Primer Design System tokens */
+  --primer-bg: #ffffff;
+  --primer-bg-subtle: #f6f8fa;
+  --primer-border: #d0d7de;
+  --primer-text-primary: #1f2328;
+  --primer-text-secondary: #57606a;
+  --primer-text-muted: #6e7781;
+  --primer-status-success: #1f883d;
+  --primer-status-failure: #cf222e;
+  --primer-status-warning: #9a6700;
+  --primer-status-neutral: #6e7781;
+  --primer-link: #0969da;
+  --primer-radius: 6px;
 }
 
 @media (prefers-color-scheme: dark) {

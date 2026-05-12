@@ -36,6 +36,8 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
     }
     console.log('user:', user.login)
 
+    const historyDays = parseInt(firstValue(request.query.historyDays) ?? '14', 10) || 14
+
     if (DEVELOPMENT) {
         return response.status(StatusCodes.OK)
             .json(mockedResponse())
@@ -94,7 +96,7 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
         let runs: any = await octokit.paginate(octokit.actions.listWorkflowRuns, {
             ...repo,
             workflow_id,
-            created: '>' + new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
+            created: '>' + new Date(Date.now() - 1000 * 60 * 60 * 24 * historyDays).toISOString(),
             per_page: 100,
             headers: {'X-GitHub-Api-Version': '2022-11-28'}
         })
@@ -114,6 +116,9 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
             run_attempt: run.run_attempt,
             status: run.status,
             conclusion: run.conclusion,
+            event: run.event,
+            head_branch: run.head_branch,
+            head_commit_message: run.head_commit?.message ?? null,
             triggering_actor: run.triggering_actor.login,
             html_url: run.html_url,
         }))
@@ -175,7 +180,7 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
 }
 
 function mockedResponse() {
-    return [
+    const workflows = [
         {
             "owner": "qoomon",
             "repo": "aws-s3-bucket-browser",
@@ -1067,6 +1072,26 @@ function mockedResponse() {
             ]
         }
     ]
+    // Backfill fields added after the mock was created so the dev server always
+    // returns a complete WorkflowRun shape.
+    const mockEvents = ['push', 'pull_request', 'schedule', 'workflow_dispatch']
+    const mockBranches = ['main', 'develop', 'feature/update-deps', 'fix/crash-on-load']
+    const mockMessages = [
+        'chore: update dependencies',
+        'fix: resolve null pointer on startup',
+        'feat: add dark mode support',
+        'docs: improve README',
+        'ci: bump actions versions',
+    ]
+    return workflows.map((wf: any) => ({
+        ...wf,
+        runs: wf.runs.map((run: any, i: number) => ({
+            ...run,
+            event: run.event ?? mockEvents[i % mockEvents.length],
+            head_branch: run.head_branch ?? mockBranches[i % mockBranches.length],
+            head_commit_message: run.head_commit_message ?? mockMessages[i % mockMessages.length],
+        })),
+    }))
 }
 
 

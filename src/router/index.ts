@@ -6,6 +6,11 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
+      component: () => import('../views/WorkflowDashboardView.vue')
+    },
+    {
+      path: '/legacy',
+      name: 'legacy',
       component: () => import('../views/ActionsView.vue')
     }
   ]

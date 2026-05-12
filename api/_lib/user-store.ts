@@ -27,8 +27,8 @@ export async function getUser(login: string) {
     return user
 }
 
-export async function newUser(code: string) {
-    let tokenResponse = await exchangeOAuthCodeForToken(code)
+export async function newUser(code: string, codeVerifier?: string) {
+    let tokenResponse = await exchangeOAuthCodeForToken(code, codeVerifier)
     if (!tokenResponse?.access_token) {
         throw Error('Invalid token request')
     }
@@ -49,32 +49,38 @@ export async function newUser(code: string) {
     return user
 }
 
-async function exchangeOAuthCodeForToken(code: string) {
-    return fetch('https://github.com/login/oauth/access_token?' + new URLSearchParams({
+async function exchangeOAuthCodeForToken(code: string, codeVerifier?: string) {
+    const params: Record<string, string> = {
         client_id: oauthAppCredentials.clientId,
         client_secret: oauthAppCredentials.clientSecret,
-        // TODO redirect_uri: 'https://exampel.com',
         code,
-    }), {
+    }
+    if (codeVerifier) {
+        params.code_verifier = codeVerifier
+    }
+    return fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
         headers: {
-            'Accept': 'application/json'
-        }
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(params).toString(),
     }).then(res => res.json()).then(parseTokenResponseData)
 }
 
 async function refreshOAuthToken(refresh_token: string) {
-    return fetch('https://github.com/login/oauth/access_token?' + new URLSearchParams({
-        client_id: oauthAppCredentials.clientId,
-        client_secret: oauthAppCredentials.clientSecret,
-        // TODO redirect_uri: 'https://exampel.com',
-        grant_type: 'refresh_token',
-        refresh_token,
-    }), {
+    return fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
         headers: {
-            'Accept': 'application/json'
-        }
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            client_id: oauthAppCredentials.clientId,
+            client_secret: oauthAppCredentials.clientSecret,
+            grant_type: 'refresh_token',
+            refresh_token,
+        }).toString(),
     }).then(res => res.json()).then(parseTokenResponseData)
 }
 

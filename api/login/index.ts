@@ -49,7 +49,8 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
     const code = firstValue(request.query.code)
     if (code) {
         console.log('got oauth code query parameter')
-        user = await newUser(code)
+        const codeVerifier = firstValue(request.cookies['pkce_verifier'])
+        user = await newUser(code, codeVerifier)
     } else {
         const idToken = request.cookies['id_token']
         if (idToken) {
@@ -61,12 +62,19 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
 
     if (!user) {
         console.log('redirect to github login')
-        return response.redirect(StatusCodes.TEMPORARY_REDIRECT, 'https://github.com/login/oauth/authorize?' + new URLSearchParams({
+        const authParams: Record<string, string> = {
             client_id: oauthAppCredentials.clientId,
             scope: 'repo',
             redirect_uri: `${request.headers['x-forwarded-proto']}://${request.headers['x-forwarded-host']}${request.url.replace(/\?.*$/, '')}`,
             // TODO state: '1234'
-        }))
+        }
+        const codeChallenge = firstValue(request.query.code_challenge)
+        const codeChallengeMethod = firstValue(request.query.code_challenge_method)
+        if (codeChallenge && codeChallengeMethod) {
+            authParams.code_challenge = codeChallenge
+            authParams.code_challenge_method = codeChallengeMethod
+        }
+        return response.redirect(StatusCodes.TEMPORARY_REDIRECT, 'https://github.com/login/oauth/authorize?' + new URLSearchParams(authParams))
     }
 
     console.log('user:', user.login)
@@ -79,6 +87,12 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
             secure: true,
             httpOnly: true,
             sameSite: 'Strict',
+        },
+        pkce_verifier: {
+            value: '',
+            path: '/',
+            expires: new Date(0),
+            sameSite: 'Lax',
         },
     })).redirect(StatusCodes.TEMPORARY_REDIRECT, '/')
 
@@ -115,6 +129,7 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
 // --- helper functions
 function cookiesFrom(cookies: Record<string, {
     value: string,
+    path?: string,
     expires?: Date,
     secure?: boolean,
     httpOnly?: boolean,
@@ -123,6 +138,7 @@ function cookiesFrom(cookies: Record<string, {
     return Object.entries(cookies).map(([key, value]) => {
         let cookie = `${key}=${encodeURIComponent(typeof value === 'string' ? value : value.value)}`
         if (typeof value !== 'string') {
+            if (value.path) cookie += `; Path=${value.path}`
             if (value.expires) cookie += `; Expires=${value.expires.toUTCString()}`
             if (value.secure) cookie += '; Secure'
             if (value.httpOnly) cookie += '; HttpOnly'
