@@ -114,6 +114,9 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
             run_attempt: run.run_attempt,
             status: run.status,
             conclusion: run.conclusion,
+            event: run.event,
+            head_branch: run.head_branch,
+            head_commit_message: run.head_commit?.message ?? null,
             triggering_actor: run.triggering_actor.login,
             html_url: run.html_url,
         }))
@@ -175,7 +178,7 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
 }
 
 function mockedResponse() {
-    return [
+    const workflows = [
         {
             "owner": "qoomon",
             "repo": "aws-s3-bucket-browser",
@@ -1067,6 +1070,26 @@ function mockedResponse() {
             ]
         }
     ]
+    // Backfill fields added after the mock was created so the dev server always
+    // returns a complete WorkflowRun shape.
+    const mockEvents = ['push', 'pull_request', 'schedule', 'workflow_dispatch']
+    const mockBranches = ['main', 'develop', 'feature/update-deps', 'fix/crash-on-load']
+    const mockMessages = [
+        'chore: update dependencies',
+        'fix: resolve null pointer on startup',
+        'feat: add dark mode support',
+        'docs: improve README',
+        'ci: bump actions versions',
+    ]
+    return workflows.map((wf: any) => ({
+        ...wf,
+        runs: wf.runs.map((run: any, i: number) => ({
+            ...run,
+            event: run.event ?? mockEvents[i % mockEvents.length],
+            head_branch: run.head_branch ?? mockBranches[i % mockBranches.length],
+            head_commit_message: run.head_commit_message ?? mockMessages[i % mockMessages.length],
+        })),
+    }))
 }
 
 

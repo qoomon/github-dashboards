@@ -13,7 +13,11 @@ type WorkflowRun = {
     html_url: string
     conclusion: WorkflowRunConclusion
     status: WorkflowRunStatus
+    event: string
+    head_branch: string | null
+    head_commit_message: string | null
     created_at: string
+    triggering_actor: string
 }
 
 type WorkflowRunStatus = "queued" | "in_progress" | "waiting" | "completed"
