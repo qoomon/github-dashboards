@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Workflow Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gh: {
+              bg:       '#0d1117',
+              surface:  '#161b22',
+              border:   '#30363d',
+              text:     '#e6edf3',
+              muted:    '#8b949e',
+              accent:   '#238636',
+              link:     '#58a6ff',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0d1117; color: #e6edf3; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="min-h-screen font-sans">
+
+  <!-- ── Login Screen ────────────────────────────────────────────── -->
+  <div id="loginScreen" class="hidden flex-col items-center justify-center min-h-screen gap-6 px-4">
+    <svg class="w-16 h-16 text-gh-text" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+    </svg>
+    <h1 class="text-3xl font-bold text-gh-text">GitHub Workflow Dashboard</h1>
+    <p class="text-gh-muted text-center max-w-sm">
+      Monitor your GitHub Actions workflow runs, grouped by repository.
+    </p>
+    <button id="loginBtn"
+      class="flex items-center gap-2 px-6 py-3 bg-gh-accent hover:bg-green-600 transition-colors rounded-md font-semibold text-white">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      Sign in with GitHub
+    </button>
+    <p id="loginError" class="hidden text-red-400 text-sm text-center max-w-sm"></p>
+    <!-- Setup instructions -->
+    <details class="mt-4 max-w-md w-full">
+      <summary class="text-gh-muted text-sm cursor-pointer hover:text-gh-link">Setup instructions</summary>
+      <div class="mt-2 p-4 bg-gh-surface border border-gh-border rounded-md text-gh-muted text-sm space-y-2">
+        <p><strong class="text-gh-text">1.</strong> Create a GitHub OAuth App at
+          <a href="https://github.com/settings/developers" target="_blank" class="text-gh-link hover:underline">
+            github.com/settings/developers
+          </a>.
+        </p>
+        <p><strong class="text-gh-text">2.</strong> Set the <em>Authorization callback URL</em> to this page's URL.</p>
+        <p><strong class="text-gh-text">3.</strong> Enable <em>"Public client"</em> (Allow device and PKCE flows) on the OAuth App settings.</p>
+        <p><strong class="text-gh-text">4.</strong> Copy your <em>Client ID</em> into the <code class="bg-gh-bg px-1 rounded">CLIENT_ID</code> constant at the top of this file's script.</p>
+      </div>
+    </details>
+  </div>
+
+  <!-- ── Dashboard Screen ─────────────────────────────────────────── -->
+  <div id="dashboardScreen" class="hidden">
+    <!-- Header -->
+    <header class="sticky top-0 z-10 bg-gh-surface border-b border-gh-border px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-6 h-6 text-gh-text" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        <span class="font-semibold text-gh-text text-lg">Workflow Dashboard</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="refreshBtn"
+          class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gh-bg border border-gh-border rounded-md hover:border-gh-link text-gh-muted hover:text-gh-text transition-colors">
+          <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Refresh
+        </button>
+        <div id="userInfo" class="flex items-center gap-2">
+          <img id="avatarImg" src="" alt="avatar" class="w-7 h-7 rounded-full border border-gh-border" />
+          <span id="userLogin" class="text-sm text-gh-muted"></span>
+        </div>
+        <button id="logoutBtn"
+          class="text-sm text-gh-muted hover:text-red-400 transition-colors">
+          Sign out
+        </button>
+      </div>
+    </header>
+
+    <!-- Loading state -->
+    <div id="loadingState" class="flex flex-col items-center justify-center py-24 gap-4">
+      <svg class="spin w-8 h-8 text-gh-link" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+      </svg>
+      <p class="text-gh-muted">Loading workflow runs…</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="errorState" class="hidden flex-col items-center justify-center py-24 gap-3 text-center px-4">
+      <svg class="w-10 h-10 text-red-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+      </svg>
+      <p id="errorMsg" class="text-red-400 font-medium"></p>
+      <button id="retryBtn" class="text-sm text-gh-link hover:underline">Try again</button>
+    </div>
+
+    <!-- Repos container -->
+    <main id="reposContainer" class="hidden max-w-5xl mx-auto px-4 py-8 space-y-8"></main>
+  </div>
+
+  <!-- ── Loading / redirect spinner ───────────────────────────────── -->
+  <div id="loadingOverlay" class="hidden flex-col items-center justify-center min-h-screen gap-4">
+    <svg class="spin w-10 h-10 text-gh-link" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+    </svg>
+    <p id="loadingOverlayMsg" class="text-gh-muted">Completing sign-in…</p>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONFIGURATION
+    // Replace CLIENT_ID with your GitHub OAuth App's Client ID.
+    // Your OAuth App must have "Allow device and PKCE flows" enabled.
+    // ─────────────────────────────────────────────────────────────────────────
+    const CLIENT_ID   = 'YOUR_CLIENT_ID';
+    const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/$/, '');
+    const SCOPE       = 'repo read:user';
+    const MAX_REPOS   = 10; // top N most recently pushed repos to display
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PKCE Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Generate a cryptographically random code_verifier (RFC 7636). */
+    function generateCodeVerifier() {
+      const array = new Uint8Array(48);
+      crypto.getRandomValues(array);
+      return btoa(String.fromCharCode(...array))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    /** Derive code_challenge = BASE64URL(SHA-256(ASCII(verifier))). */
+    async function generateCodeChallenge(verifier) {
+      const data    = new TextEncoder().encode(verifier);
+      const digest  = await crypto.subtle.digest('SHA-256', data);
+      return btoa(String.fromCharCode(...new Uint8Array(digest)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    /** Generate a random state token to prevent CSRF. */
+    function generateState() {
+      const array = new Uint8Array(16);
+      crypto.getRandomValues(array);
+      return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Token storage (sessionStorage)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function getToken()         { return sessionStorage.getItem('gh_token'); }
+    function setToken(token)    { sessionStorage.setItem('gh_token', token); }
+    function clearToken()       { sessionStorage.removeItem('gh_token'); }
+    function clearPkceSession() {
+      sessionStorage.removeItem('pkce_verifier');
+      sessionStorage.removeItem('pkce_state');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // OAuth Flow
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Phase 1: Redirect user to GitHub for authorization. */
+    async function startLogin() {
+      if (CLIENT_ID === 'YOUR_CLIENT_ID') {
+        showLoginError('Please set your GitHub OAuth App Client ID in the script configuration.');
+        return;
+      }
+      const verifier   = generateCodeVerifier();
+      const challenge  = await generateCodeChallenge(verifier);
+      const state      = generateState();
+
+      sessionStorage.setItem('pkce_verifier', verifier);
+      sessionStorage.setItem('pkce_state', state);
+
+      const params = new URLSearchParams({
+        client_id:             CLIENT_ID,
+        redirect_uri:          REDIRECT_URI,
+        scope:                 SCOPE,
+        state,
+        code_challenge:        challenge,
+        code_challenge_method: 'S256',
+      });
+
+      window.location.href = `https://github.com/login/oauth/authorize?${params}`;
+    }
+
+    /**
+     * Phase 2: Exchange the authorization code for an access token.
+     * GitHub must have "Allow device and PKCE flows" enabled on the OAuth App,
+     * and CORS must be allowed on the token endpoint.
+     */
+    async function exchangeCodeForToken(code, state) {
+      const savedState    = sessionStorage.getItem('pkce_state');
+      const codeVerifier  = sessionStorage.getItem('pkce_verifier');
+
+      if (!codeVerifier || state !== savedState) {
+        throw new Error('Invalid OAuth state. Please try signing in again.');
+      }
+      clearPkceSession();
+
+      const response = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          'Accept':       'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id:     CLIENT_ID,
+          code,
+          redirect_uri:  REDIRECT_URI,
+          code_verifier: codeVerifier,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Token exchange failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error_description || data.error);
+      }
+
+      return data.access_token;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GitHub API helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    async function ghFetch(path, token) {
+      const res = await fetch(`https://api.github.com${path}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept':        'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+      if (!res.ok) throw new Error(`GitHub API error: ${res.status} on ${path}`);
+      return res.json();
+    }
+
+    /** Fetch user profile. */
+    function fetchUser(token) {
+      return ghFetch('/user', token);
+    }
+
+    /**
+     * Fetch the user's repositories sorted by most-recently pushed,
+     * limited to MAX_REPOS entries.
+     */
+    async function fetchRepos(token) {
+      const data = await ghFetch(
+        `/user/repos?sort=pushed&direction=desc&per_page=${MAX_REPOS}&affiliation=owner,collaborator`,
+        token
+      );
+      return data;
+    }
+
+    /**
+     * Fetch the most recent workflow runs for a repository.
+     * Returns up to 5 runs.
+     */
+    async function fetchWorkflowRuns(repo, token) {
+      const data = await ghFetch(
+        `/repos/${repo.full_name}/actions/runs?per_page=5`,
+        token
+      );
+      return data.workflow_runs || [];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Rendering Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const STATUS_CONFIG = {
+      success:     { label: 'Success',     dot: 'bg-green-500',  text: 'text-green-400'  },
+      failure:     { label: 'Failure',     dot: 'bg-red-500',    text: 'text-red-400'    },
+      cancelled:   { label: 'Cancelled',   dot: 'bg-yellow-500', text: 'text-yellow-400' },
+      timed_out:   { label: 'Timed out',   dot: 'bg-orange-500', text: 'text-orange-400' },
+      skipped:     { label: 'Skipped',     dot: 'bg-gray-500',   text: 'text-gray-400'   },
+      in_progress: { label: 'In progress', dot: 'bg-blue-400 spin', text: 'text-blue-400' },
+      queued:      { label: 'Queued',      dot: 'bg-yellow-400', text: 'text-yellow-400' },
+      waiting:     { label: 'Waiting',     dot: 'bg-yellow-400', text: 'text-yellow-400' },
+      unknown:     { label: 'Unknown',     dot: 'bg-gray-400',   text: 'text-gray-400'   },
+    };
+
+    function resolveStatus(run) {
+      if (run.status === 'completed') return run.conclusion || 'unknown';
+      return run.status || 'unknown';
+    }
+
+    function statusBadge(run) {
+      const key = resolveStatus(run);
+      const cfg = STATUS_CONFIG[key] || { label: key, dot: 'bg-gray-400', text: 'text-gray-400' };
+      return `
+        <span class="flex items-center gap-1.5 text-xs font-medium ${cfg.text}">
+          <span class="inline-block w-2 h-2 rounded-full ${cfg.dot}"></span>
+          ${cfg.label}
+        </span>`;
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, {
+        month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    }
+
+    function branchIcon() {
+      return `<svg class="w-3.5 h-3.5 inline-block mr-0.5 -mt-0.5 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 3v12m0 0a3 3 0 1 0 3 3m-3-3a3 3 0 0 0 3-3m3-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 0v6a3 3 0 0 1-3 3"/>
+      </svg>`;
+    }
+
+    function renderRunRow(run) {
+      const timestamp = run.updated_at || run.created_at;
+      const runUrl    = run.html_url;
+      return `
+        <div class="flex items-start sm:items-center justify-between gap-2 py-2.5 px-3 hover:bg-gh-bg rounded-md transition-colors group">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0 flex-1">
+            <div class="flex-1 min-w-0">
+              <a href="${runUrl}" target="_blank" rel="noopener"
+                class="text-sm font-medium text-gh-text hover:text-gh-link truncate block">
+                ${escapeHtml(run.name || run.display_title || 'Workflow run')}
+              </a>
+              <span class="text-xs text-gh-muted">
+                ${branchIcon()}${escapeHtml(run.head_branch || '—')}
+                <span class="mx-1 opacity-40">·</span>
+                <span class="font-mono text-[11px]">${escapeHtml((run.head_sha || '').slice(0, 7))}</span>
+              </span>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              ${statusBadge(run)}
+            </div>
+          </div>
+          <time class="text-xs text-gh-muted shrink-0 tabular-nums" datetime="${timestamp}">
+            ${formatDate(timestamp)}
+          </time>
+        </div>`;
+    }
+
+    function renderRepoSection(repo, runs) {
+      const noRuns = runs.length === 0;
+      const runsHtml = noRuns
+        ? `<p class="px-3 py-4 text-sm text-gh-muted italic">No workflow runs found.</p>`
+        : runs.map(renderRunRow).join('<hr class="border-gh-border mx-3" />');
+
+      return `
+        <section class="bg-gh-surface border border-gh-border rounded-lg overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gh-border">
+            <div class="flex items-center gap-2.5">
+              <!-- repo icon -->
+              <svg class="w-4 h-4 text-gh-muted shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v8.25m19.5 0v.243a2.25 2.25 0 0 1-2.07 2.244l-2.12.353a4.503 4.503 0 0 1-1.307.014l-7.03-.36A2.25 2.25 0 0 1 2.25 14.743V12"/>
+              </svg>
+              <a href="${repo.html_url}" target="_blank" rel="noopener"
+                class="font-semibold text-gh-text hover:text-gh-link text-sm leading-tight">
+                ${escapeHtml(repo.full_name)}
+              </a>
+              ${repo.private
+                ? `<span class="text-[10px] px-1.5 py-0.5 border border-gh-border rounded text-gh-muted">Private</span>`
+                : ''}
+            </div>
+            <a href="${repo.html_url}/actions" target="_blank" rel="noopener"
+              class="text-xs text-gh-muted hover:text-gh-link transition-colors">
+              All runs →
+            </a>
+          </div>
+          <div class="divide-y divide-transparent">
+            ${runsHtml}
+          </div>
+        </section>`;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // UI state management
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function showScreen(id) {
+      for (const el of document.querySelectorAll(
+        '#loginScreen, #dashboardScreen, #loadingOverlay'
+      )) {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      }
+      const target = document.getElementById(id);
+      target.classList.remove('hidden');
+      target.classList.add('flex');
+    }
+
+    function showLoginError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function setDashboardContent(state) {
+      document.getElementById('loadingState').classList.toggle('hidden',   state !== 'loading');
+      document.getElementById('errorState').classList.toggle('hidden',     state !== 'error');
+      document.getElementById('reposContainer').classList.toggle('hidden', state !== 'loaded');
+
+      // flex on loading/error
+      document.getElementById('loadingState').classList.toggle('flex',   state === 'loading');
+      document.getElementById('errorState').classList.toggle('flex',     state === 'error');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Main data loading
+    // ─────────────────────────────────────────────────────────────────────────
+
+    async function loadDashboard(token) {
+      setDashboardContent('loading');
+      try {
+        // Fetch user + repos concurrently
+        const [user, repos] = await Promise.all([
+          fetchUser(token),
+          fetchRepos(token),
+        ]);
+
+        // Populate user info
+        document.getElementById('avatarImg').src    = user.avatar_url;
+        document.getElementById('userLogin').textContent = user.login;
+
+        if (repos.length === 0) {
+          document.getElementById('reposContainer').innerHTML =
+            `<p class="text-gh-muted text-center py-12">No repositories found.</p>`;
+          setDashboardContent('loaded');
+          return;
+        }
+
+        // Fetch workflow runs for all repos concurrently
+        const runsResults = await Promise.allSettled(
+          repos.map(repo => fetchWorkflowRuns(repo, token))
+        );
+
+        // Build HTML
+        const container = document.getElementById('reposContainer');
+        container.innerHTML = repos.map((repo, i) => {
+          const runs = runsResults[i].status === 'fulfilled' ? runsResults[i].value : [];
+          return renderRepoSection(repo, runs);
+        }).join('');
+
+        setDashboardContent('loaded');
+      } catch (err) {
+        console.error(err);
+        document.getElementById('errorMsg').textContent = err.message;
+        setDashboardContent('error');
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bootstrap
+    // ─────────────────────────────────────────────────────────────────────────
+
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const code   = params.get('code');
+      const state  = params.get('state');
+      const error  = params.get('error');
+
+      // Phase 2: Handle OAuth callback (error without code, or code exchange)
+      if (code || error) {
+        showScreen('loadingOverlay');
+        history.replaceState({}, document.title, window.location.pathname);
+
+        try {
+          // Check for error returned by GitHub before attempting exchange
+          if (error) throw new Error(params.get('error_description') || error);
+          const token = await exchangeCodeForToken(code, state);
+          setToken(token);
+          showScreen('dashboardScreen');
+          await loadDashboard(token);
+        } catch (err) {
+          clearToken();
+          clearPkceSession();
+          showScreen('loginScreen');
+          showLoginError(err.message);
+        }
+        return;
+      }
+
+      // Already authenticated
+      const token = getToken();
+      if (token) {
+        showScreen('dashboardScreen');
+        await loadDashboard(token);
+        return;
+      }
+
+      // Not authenticated
+      showScreen('loginScreen');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Event listeners
+    // ─────────────────────────────────────────────────────────────────────────
+
+    document.getElementById('loginBtn').addEventListener('click', startLogin);
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      clearToken();
+      clearPkceSession();
+      showScreen('loginScreen');
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      const token = getToken();
+      if (!token) return;
+      const icon = document.getElementById('refreshIcon');
+      icon.classList.add('spin');
+      await loadDashboard(token);
+      icon.classList.remove('spin');
+    });
+
+    document.getElementById('retryBtn').addEventListener('click', async () => {
+      const token = getToken();
+      if (token) await loadDashboard(token);
+      else showScreen('loginScreen');
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Start
+    // ─────────────────────────────────────────────────────────────────────────
+
+    init().catch(console.error);
+  </script>
+</body>
+</html>
