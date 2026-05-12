@@ -90,6 +90,7 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
         },
         pkce_verifier: {
             value: '',
+            path: '/',
             expires: new Date(0),
             sameSite: 'Lax',
         },
@@ -128,6 +129,7 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
 // --- helper functions
 function cookiesFrom(cookies: Record<string, {
     value: string,
+    path?: string,
     expires?: Date,
     secure?: boolean,
     httpOnly?: boolean,
@@ -136,6 +138,7 @@ function cookiesFrom(cookies: Record<string, {
     return Object.entries(cookies).map(([key, value]) => {
         let cookie = `${key}=${encodeURIComponent(typeof value === 'string' ? value : value.value)}`
         if (typeof value !== 'string') {
+            if (value.path) cookie += `; Path=${value.path}`
             if (value.expires) cookie += `; Expires=${value.expires.toUTCString()}`
             if (value.secure) cookie += '; Secure'
             if (value.httpOnly) cookie += '; HttpOnly'

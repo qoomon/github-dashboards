@@ -17,7 +17,8 @@ onBeforeMount(async () => {
     const {codeChallenge, codeVerifier} = await initiatePkce()
     // Pass the verifier to the backend via a short-lived cookie so the
     // serverless callback can include it in the token-exchange request.
-    document.cookie = `pkce_verifier=${encodeURIComponent(codeVerifier)}; Path=/; SameSite=Lax; Max-Age=300`
+    const secure = location.protocol === 'https:' ? '; Secure' : ''
+    document.cookie = `pkce_verifier=${encodeURIComponent(codeVerifier)}; Path=/; SameSite=Lax; Max-Age=300${secure}`
     window.location.href = '/login?' + new URLSearchParams({
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',

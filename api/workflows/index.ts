@@ -36,6 +36,8 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
     }
     console.log('user:', user.login)
 
+    const historyDays = parseInt(firstValue(request.query.historyDays) ?? '14', 10) || 14
+
     if (DEVELOPMENT) {
         return response.status(StatusCodes.OK)
             .json(mockedResponse())
@@ -94,7 +96,7 @@ async function handleGet(request: VercelRequest, response: VercelResponse) {
         let runs: any = await octokit.paginate(octokit.actions.listWorkflowRuns, {
             ...repo,
             workflow_id,
-            created: '>' + new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
+            created: '>' + new Date(Date.now() - 1000 * 60 * 60 * 24 * historyDays).toISOString(),
             per_page: 100,
             headers: {'X-GitHub-Api-Version': '2022-11-28'}
         })

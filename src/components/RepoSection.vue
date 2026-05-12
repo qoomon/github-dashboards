@@ -1,12 +1,21 @@
 <template>
   <section class="repo-section">
     <!-- Repository header -->
-    <header class="repo-header" @click="expanded = !expanded">
-      <span class="repo-expand-icon" :class="{collapsed: !expanded}">
-        <svg viewBox="0 0 16 16" width="14" height="14" style="fill:currentColor;">
-          <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z"/>
-        </svg>
-      </span>
+    <div class="repo-header">
+      <button
+          class="repo-expand-btn"
+          :aria-expanded="expanded"
+          :aria-label="`${expanded ? 'Collapse' : 'Expand'} ${owner}/${repo}`"
+          @click="expanded = !expanded"
+          @keydown.enter.prevent="expanded = !expanded"
+          @keydown.space.prevent="expanded = !expanded"
+      >
+        <span class="repo-expand-icon" :class="{collapsed: !expanded}">
+          <svg viewBox="0 0 16 16" width="14" height="14" style="fill:currentColor;">
+            <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z"/>
+          </svg>
+        </span>
+      </button>
 
       <!-- Repo icon -->
       <svg viewBox="0 0 16 16" width="16" height="16" class="repo-icon">
@@ -34,7 +43,7 @@
       </div>
 
       <span class="repo-run-count">{{ totalRuns }} run{{ totalRuns !== 1 ? 's' : '' }}</span>
-    </header>
+    </div>
 
     <!-- Run rows -->
     <div v-if="expanded" class="repo-runs">
@@ -81,7 +90,7 @@ const counts = computed(() => {
   props.workflows.forEach((wf) => {
     const run = wf.runs[0]
     if (!run) return
-    if (run.status === 'in_progress' || run.status === 'queued') {
+    if (run.status === 'in_progress' || run.status === 'queued' || run.status === 'waiting') {
       c.in_progress++
     } else if (run.conclusion === 'success' || run.conclusion === 'neutral') {
       c.success++
@@ -108,7 +117,6 @@ const counts = computed(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  cursor: pointer;
   user-select: none;
   background: var(--primer-bg-subtle);
   border-bottom: 1px solid var(--primer-border);
@@ -118,11 +126,27 @@ const counts = computed(() => {
   background: color-mix(in srgb, var(--primer-bg-subtle) 70%, var(--primer-border) 30%);
 }
 
-.repo-expand-icon {
+.repo-expand-btn {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   color: var(--primer-text-muted);
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.repo-expand-btn:focus-visible {
+  outline: 2px solid var(--primer-link);
+  outline-offset: 2px;
+}
+
+.repo-expand-icon {
+  display: flex;
+  align-items: center;
   transition: transform 0.15s;
 }
 

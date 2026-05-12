@@ -58,26 +58,29 @@ async function exchangeOAuthCodeForToken(code: string, codeVerifier?: string) {
     if (codeVerifier) {
         params.code_verifier = codeVerifier
     }
-    return fetch('https://github.com/login/oauth/access_token?' + new URLSearchParams(params), {
+    return fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
         headers: {
-            'Accept': 'application/json'
-        }
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(params).toString(),
     }).then(res => res.json()).then(parseTokenResponseData)
 }
 
 async function refreshOAuthToken(refresh_token: string) {
-    return fetch('https://github.com/login/oauth/access_token?' + new URLSearchParams({
-        client_id: oauthAppCredentials.clientId,
-        client_secret: oauthAppCredentials.clientSecret,
-        // TODO redirect_uri: 'https://exampel.com',
-        grant_type: 'refresh_token',
-        refresh_token,
-    }), {
+    return fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
         headers: {
-            'Accept': 'application/json'
-        }
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            client_id: oauthAppCredentials.clientId,
+            client_secret: oauthAppCredentials.clientSecret,
+            grant_type: 'refresh_token',
+            refresh_token,
+        }).toString(),
     }).then(res => res.json()).then(parseTokenResponseData)
 }
 

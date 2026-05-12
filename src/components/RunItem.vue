@@ -50,7 +50,7 @@ const props = defineProps({
 
 const statusIcon = computed(() => {
   const {status, conclusion} = props.run
-  if (status === 'in_progress' || status === 'queued') return 'in_progress'
+  if (status === 'in_progress' || status === 'queued' || status === 'waiting') return 'in_progress'
   if (status === 'completed') {
     if (conclusion === 'success' || conclusion === 'neutral') return 'success'
     if (conclusion === 'failure' || conclusion === 'timed_out') return 'failure'

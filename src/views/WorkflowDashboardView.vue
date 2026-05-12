@@ -86,7 +86,7 @@ const repoStatusMap = computed<Record<string, 'success' | 'failure' | 'in_progre
   const map: Record<string, 'success' | 'failure' | 'in_progress' | 'neutral'> = {}
   for (const key of allRepoKeys.value) {
     const latestRuns = groupedWorkflows.value[key].map((wf) => wf.runs[0]).filter(Boolean)
-    if (latestRuns.some((r) => r.status === 'in_progress' || r.status === 'queued')) {
+    if (latestRuns.some((r) => r.status === 'in_progress' || r.status === 'queued' || r.status === 'waiting')) {
       map[key] = 'in_progress'
     } else if (latestRuns.some((r) => r.conclusion === 'failure' || r.conclusion === 'timed_out')) {
       map[key] = 'failure'
