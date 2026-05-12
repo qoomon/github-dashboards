@@ -115,7 +115,7 @@ const counts = computed(() => {
 }
 
 .repo-header:hover {
-  background: #eaeff2;
+  background: color-mix(in srgb, var(--primer-bg-subtle) 70%, var(--primer-border) 30%);
 }
 
 .repo-expand-icon {

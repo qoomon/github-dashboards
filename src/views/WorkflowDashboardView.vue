@@ -104,7 +104,12 @@ const staleThreshold = computed(() => new Date(Date.now() - 1000 * 60 * 60 * 24 
 const filteredRepoKeys = computed(() => {
   return allRepoKeys.value.filter((key) => {
     const wfs = groupedWorkflows.value[key]
-    const latestRun = wfs.flatMap((w) => w.runs)[0]
+    // Find the genuinely most-recent run across all workflows in this repo
+    const latestRun = wfs
+        .flatMap((w) => w.runs)
+        .reduce<WorkflowRun | null>((best, run) =>
+            !best || new Date(run.created_at) > new Date(best.created_at) ? run : best
+        , null)
 
     if (filters.value.hideStale && latestRun) {
       if (new Date(latestRun.created_at) < staleThreshold.value) return false
